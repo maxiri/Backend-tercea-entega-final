@@ -1,7 +1,6 @@
 // src/Server.js
 import express from "express";
 import morgan from "morgan";
-import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "../Config/db.js";
 
@@ -20,27 +19,34 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
-// Configuración CORS
-// Permite que tu frontend en Vercel acceda al backend en Render
+// Configuración CORS robusta
 const allowedOrigins = [
   "https://frontend-terceraa-entrega.vercel.app",
-  "http://localhost:5173", // para desarrollo local con Vite
+  "http://localhost:5173", // desarrollo local Vite
 ];
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(
-          new Error(
-            "No permitido por CORS: " + origin
-          )
-        );
-      }
-    },
-  })
-);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,DELETE,OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type,Authorization"
+    );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  } else {
+    res.status(403).json({ message: "No permitido por CORS" });
+  }
+});
 
 // Health check
 app.get("/", (_req, res) =>
