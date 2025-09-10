@@ -1,4 +1,3 @@
-
 import express from "express";
 import morgan from "morgan";
 import cors from "cors";
@@ -18,8 +17,17 @@ const app = express();
 // Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 app.use(morgan("dev"));
-app.use(cors({ origin: process.env.CORS_ORIGIN || "*" }));
+
+// Configuración CORS
+// Asegúrate de que en Render tu variable de entorno CORS_ORIGIN esté:
+// https://frontend-terceraa-entrega.vercel.app
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "*",
+  })
+);
 
 // Health check
 app.get("/", (_req, res) =>
