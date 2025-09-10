@@ -1,6 +1,7 @@
 // src/Server.js
 import express from "express";
 import morgan from "morgan";
+import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "../Config/db.js";
 
@@ -19,34 +20,32 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
-// Configuración CORS robusta
+// Configuración CORS
+// Permite que tu frontend en Vercel acceda al backend en Render
 const allowedOrigins = [
   "https://frontend-terceraa-entrega.vercel.app",
-  "http://localhost:5173", // desarrollo local Vite
+  "http://localhost:5173", // para desarrollo local con Vite
 ];
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader(
-      "Access-Control-Allow-Methods",
-      "GET,POST,PUT,DELETE,OPTIONS"
-    );
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "Content-Type,Authorization"
-    );
-    res.setHeader("Access-Control-Allow-Credentials", "true");
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Permite requests sin origin (ej: Postman, fetch directo desde backend)
+      if (!origin) return callback(null, true);
 
-    if (req.method === "OPTIONS") {
-      return res.sendStatus(200);
-    }
-    next();
-  } else {
-    res.status(403).json({ message: "No permitido por CORS" });
-  }
-});
+      // Permite cualquier subdominio de Vercel que empiece igual
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.startsWith("https://frontend-terceraa-entrega")
+      ) {
+        return callback(null, true);
+      }
+
+      callback(new Error("No permitido por CORS: " + origin));
+    },
+    credentials: true,
+  })
+);
 
 // Health check
 app.get("/", (_req, res) =>
