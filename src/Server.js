@@ -1,58 +1,70 @@
-// src/api.js
-const API_BASE = import.meta.env.VITE_API_BASE || "https://backend-tercea-entega-final.onrender.com";
+// src/Server.js
+import express from "express";
+import morgan from "morgan";
+import cors from "cors";
+import dotenv from "dotenv";
+import connectDB from "../Config/db.js";
 
-// ----------------- Productos -----------------
-export const fetchProducts = async () => {
-  const res = await fetch(`${API_BASE}/api/products`);
-  if (!res.ok) throw new Error("Error al obtener productos");
-  return await res.json();
-};
+import productRoutes from "../routes/productRoutes.js";
+import cartRoutes from "../routes/cartRoutes.js";
+import taskRoutes from "../routes/taskRoutes.js";
 
-export const createProduct = async (product) => {
-  const res = await fetch(`${API_BASE}/api/products`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(product),
+import { notFound, errorHandler } from "../middleware/errorHandler.js";
+
+dotenv.config();
+
+const app = express();
+
+// Middlewares
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan("dev"));
+
+// Configuración CORS
+// Permite que tu frontend en Vercel acceda al backend en Render
+const allowedOrigins = [
+  "https://frontend-terceraa-entrega.vercel.app",
+  "http://localhost:5173", // para desarrollo local con Vite
+];
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(
+          new Error(
+            "No permitido por CORS: " + origin
+          )
+        );
+      }
+    },
+  })
+);
+
+// Health check
+app.get("/", (_req, res) =>
+  res.json({ ok: true, name: "tienda-backend", version: "1.0.0" })
+);
+
+// Rutas API
+app.use("/api/products", productRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/tasks", taskRoutes);
+
+// 404 + manejador de errores
+app.use(notFound);
+app.use(errorHandler);
+
+// Server
+const PORT = process.env.PORT || 5000;
+
+connectDB()
+  .then(() => {
+    app.listen(PORT, () =>
+      console.log(`🚀 API running on port ${PORT}`)
+    );
+  })
+  .catch((err) => {
+    console.error("❌ Error conectando a la DB:", err);
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: "Error al crear producto" }));
-    throw new Error(err.message || "Error al crear producto");
-  }
-  return await res.json();
-};
-
-export const updateProduct = async (id, data) => {
-  const res = await fetch(`${API_BASE}/api/products/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: "Error al actualizar producto" }));
-    throw new Error(err.message || "Error al actualizar producto");
-  }
-  return await res.json();
-};
-
-export const deleteProduct = async (id) => {
-  const res = await fetch(`${API_BASE}/api/products/${id}`, { method: "DELETE" });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: "Error al eliminar producto" }));
-    throw new Error(err.message || "Error al eliminar producto");
-  }
-  return { success: true };
-};
-
-// ----------------- Carrito -----------------
-export const sendCart = async (items, customer = {}) => {
-  const res = await fetch(`${API_BASE}/api/cart`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items, customer }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: "Error al enviar carrito" }));
-    throw new Error(err.message || "Error al enviar carrito");
-  }
-  return await res.json();
-};
